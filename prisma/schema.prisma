@@ -1,0 +1,113 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// 1. USUÁRIO (O CORRETOR AUTÔNOMO)
+// ------------------------------------------------------
+model User {
+  id             String       @id @default(uuid())
+  name           String
+  email          String       @unique
+  password       String       // Senha encriptada com bcrypt
+  phone          String?      // WhatsApp para aparecer no panfleto
+  agencyName     String?      // Nome da agência parceira
+  logoUrl        String?      // URL da logo no Cloudflare R2
+  subscriptionId String?      // ID da assinatura no Stripe/Asaas
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  clients        Client[]
+  quotes         Quote[]
+  commissions    Commission[]
+}
+
+// ------------------------------------------------------
+// 2. CLIENTE (E DEPENDENTES)
+// ------------------------------------------------------
+model Client {
+  id             String       @id @default(uuid())
+  userId         String       // Vinculado ao Corretor
+  name           String
+  cpfOrCnpj      String?
+  phone          String?
+  birthDate      DateTime?
+  planAnniversary DateTime?   // Alerta de reajuste
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id])
+  dependents     Dependent[]
+  documents      Document[]
+  quotes         Quote[]
+  commissions    Commission[]
+}
+
+model Dependent {
+  id             String       @id @default(uuid())
+  clientId       String
+  name           String
+  birthDate      DateTime?
+  relationship   String       // Ex: Cônjuge, Filho
+  createdAt      DateTime     @default(now())
+
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------
+// 3. COTAÇÕES ("PANFLETO DIGITAL")
+// ------------------------------------------------------
+model Quote {
+  id             String       @id @default(uuid())
+  userId         String       // Corretor
+  clientId       String?      // Opcional, pode ser um lead novo
+  leadName       String?      // Se não for cliente ainda
+  linkHash       String       @unique // Hash do link público gerado
+  totalValue     Float?
+  status         String       @default("PENDING") // PENDING, OPENED, WON, LOST
+  openedAt       DateTime?    // Para disparar notificação de leitura
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id])
+  client         Client?      @relation(fields: [clientId], references: [id])
+}
+
+// ------------------------------------------------------
+// 4. DOCUMENTOS ("COFRE DO CLIENTE")
+// ------------------------------------------------------
+model Document {
+  id             String       @id @default(uuid())
+  clientId       String
+  type           String       // Ex: RG, CPF, COMPROVANTE_RESIDENCIA
+  fileUrl        String       // Link no S3 / Cloudflare R2
+  uploadedAt     DateTime     @default(now())
+
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------
+// 5. COMISSÕES (RECEBÍVEIS DA AGÊNCIA)
+// ------------------------------------------------------
+model Commission {
+  id             String       @id @default(uuid())
+  userId         String       // Corretor
+  clientId       String       // Venda fechada
+  operator       String       // Ex: Amil, Bradesco
+  expectedValue  Float
+  dueDate        DateTime
+  installment    Int          // Parcela (Ex: 1 = Agenciamento, 2+ = Vitalício)
+  isPaid         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id])
+  client         Client       @relation(fields: [clientId], references: [id])
+}
