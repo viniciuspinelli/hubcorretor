@@ -3,6 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 // Configuração compatível com Edge Runtime (sem bcryptjs)
 // Usada apenas pelo middleware para verificar a sessão
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

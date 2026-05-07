@@ -3,18 +3,31 @@ set -e
 
 echo "🔄 Tentando aplicar migrações Prisma..."
 
-# Tenta deploy primeiro (se banco estiver vazio ou novo)
+# 1) Tenta deploy normal (banco vazio/novo)
 if ./node_modules/.bin/prisma migrate deploy 2>&1; then
   echo "✅ Migrações aplicadas com sucesso"
 else
-  echo "⚠️  Deploy falhou, tentando resolver baseline..."
-  # Se falhar com P3005 (banco não vazio), marca como já aplicada
-  ./node_modules/.bin/prisma migrate resolve --rolled-back 0_init 2>&1 || true
-  
-  # Tenta db push como fallback
-  ./node_modules/.bin/prisma db push --skip-generate --accept-data-loss 2>&1 || true
-  
-  echo "ℹ️  Continuando mesmo que migração tenha falhado..."
+  echo "⚠️  migrate deploy falhou; tentando baseline e reconciliação segura..."
+
+  # 2) Marca baseline como aplicada (quando banco já existe sem _prisma_migrations)
+  ./node_modules/.bin/prisma migrate resolve --applied 0_init 2>&1 || true
+
+  # 3) Corrige divergências conhecidas sem resetar banco
+  ./node_modules/.bin/prisma db execute --stdin <<'SQL' || true
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "name" TEXT;
+UPDATE "User" SET "name" = 'Usuario' WHERE "name" IS NULL;
+
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3);
+UPDATE "User" SET "updatedAt" = CURRENT_TIMESTAMP WHERE "updatedAt" IS NULL;
+
+ALTER TABLE "User" ALTER COLUMN "name" SET NOT NULL;
+ALTER TABLE "User" ALTER COLUMN "updatedAt" SET NOT NULL;
+SQL
+
+  # 4) Tenta novamente para aplicar qualquer pendência formal
+  ./node_modules/.bin/prisma migrate deploy 2>&1 || true
+
+  echo "ℹ️  Inicialização concluída com fallback de baseline/schema."
 fi
 
 echo "✅ Iniciando servidor Next.js..."
