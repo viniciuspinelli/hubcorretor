@@ -56,3 +56,12 @@ ENV HOSTNAME="0.0.0.0"
 # Se o banco estiver vazio, vai aplicar a migration init
 # Se o banco já existir, vai reportar erro de baseline mas continua
 CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy || true; node server.js"]
+COPY --from=builder /app/init.sh ./init.sh
+RUN chmod +x ./init.sh
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Executa script de inicialização que trata migrações robustamente
+CMD ["./init.sh"]
