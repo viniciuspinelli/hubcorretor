@@ -45,19 +45,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copia o schema do Prisma e node_modules para rodar migrate no start
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs --chmod=755 /app/init.sh ./init.sh
 
 USER nextjs
-
-EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Executa as migrations pendentes e inicia o servidor
-# Se o banco estiver vazio, vai aplicar a migration init
-# Se o banco já existir, vai reportar erro de baseline mas continua
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy || true; node server.js"]
-COPY --from=builder /app/init.sh ./init.sh
-RUN chmod +x ./init.sh
 
 EXPOSE 3000
 ENV PORT=3000
