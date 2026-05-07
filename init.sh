@@ -9,10 +9,12 @@ if ./node_modules/.bin/prisma migrate deploy 2>&1; then
 else
   echo "⚠️  migrate deploy falhou; tentando baseline do banco legado..."
 
-  # 2) Banco já existe sem tabela _prisma_migrations: marca 0_init como aplicado
+  # 2) Banco legado sem _prisma_migrations: marca 0_init e 1_add_user_columns como aplicados
+  #    (o 2_reset_schema vai recriar tudo do zero com o schema correto)
   ./node_modules/.bin/prisma migrate resolve --applied 0_init 2>&1 || true
+  ./node_modules/.bin/prisma migrate resolve --applied 1_add_user_columns 2>&1 || true
 
-  # 3) Aplica as demais migrations (1_add_user_columns etc.)
+  # 3) Aplica apenas o 2_reset_schema (DROP + CREATE com schema correto)
   ./node_modules/.bin/prisma migrate deploy 2>&1 || true
 
   echo "ℹ️  Inicialização concluída."
