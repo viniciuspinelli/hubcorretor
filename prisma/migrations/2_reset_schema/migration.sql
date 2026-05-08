@@ -1,12 +1,8 @@
--- Drop all tables (CASCADE removes foreign key constraints automatically)
-DROP TABLE IF EXISTS "Commission" CASCADE;
-DROP TABLE IF EXISTS "Document" CASCADE;
-DROP TABLE IF EXISTS "Quote" CASCADE;
-DROP TABLE IF EXISTS "Dependent" CASCADE;
-DROP TABLE IF EXISTS "Client" CASCADE;
-DROP TABLE IF EXISTS "User" CASCADE;
+-- MIGRATION NEUTRALIZADA: as tabelas já foram recriadas neste deploy.
+-- Este arquivo não executa DROP novamente para proteger dados de outros sistemas.
+-- As tabelas do HubCorretor já existem com o schema correto.
 
--- Recreate "User"
+-- Recreate "User" (no-op se já existir)
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
